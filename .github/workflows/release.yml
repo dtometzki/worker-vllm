@@ -40,14 +40,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
       - name: Set environment variables
         run: |
           echo "DOCKERHUB_REPO=${{ vars.DOCKERHUB_REPO || 'dtometzki' }}" >> $GITHUB_ENV
@@ -72,6 +64,8 @@ jobs:
         with:
           push: true
           set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
             *.args.DOCKERHUB_REPO=${{ env.DOCKERHUB_REPO }}
             *.args.DOCKERHUB_IMG=${{ env.DOCKERHUB_IMG }}
             *.args.RELEASE_VERSION=${{ env.RELEASE_VERSION }}
@@ -87,6 +81,7 @@ jobs:
           else
             echo "Trigger: GitHub release (tag: ${{ github.ref_name }})"
           fi
+
 
 
 
