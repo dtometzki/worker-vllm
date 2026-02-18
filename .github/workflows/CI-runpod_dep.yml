@@ -22,7 +22,15 @@ jobs:
           echo "Fetching the current runpod version from requirements.txt..."
           
           # Get current version, allowing both == and ~= in the search pattern
-          current_version=$(grep -oP 'runpod[~=]{1,2}\K[^"]+' ./builder/requirements.txt)
+          current_version=$(grep -oP 'runpod[~=]{1,2}\K[^"]+' ./builder/requirements.txt || echo "")
+          
+          # If no version found in requirements.txt, fetch current version from PyPI
+          if [ -z "$current_version" ]; then
+              echo "No version found in requirements.txt. Fetching current version from PyPI..."
+              current_version=$(curl -s https://pypi.org/pypi/runpod/json | jq -r .info.version)
+              echo "Using PyPI version as current: $current_version"
+          fi
+          
           echo "Current version: $current_version"
 
           # Extract major and minor from current version
