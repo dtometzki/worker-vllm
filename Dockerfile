@@ -1,9 +1,9 @@
-FROM nvidia/cuda:12.8.0-base-ubuntu22.04 
+FROM nvidia/cuda:12.9.1-base-ubuntu22.04 
 
 RUN apt-get update -y \
     && apt-get install -y python3-pip
 
-RUN ldconfig /usr/local/cuda-12.8/compat/
+RUN ldconfig /usr/local/cuda-12.9/compat/
 
 # Install vLLM with FlashInfer - use CUDA 12.8 PyTorch wheels (compatible with vLLM 0.15.0)
 RUN python3 -m pip install --upgrade pip && \
