@@ -35,15 +35,15 @@ ENV MODEL_NAME=$MODEL_NAME \
 
 ENV PYTHONPATH="/:/vllm-workspace"
 
-RUN python3 -m pip install -U pip && \
-    # vLLM je nach Schalter
+# vLLM je nach Schalter
+RUN python3 -m pip install --no-cache-dir -U pip && \
     if [ "${VLLM_NIGHTLY}" = "true" ]; then \
-      pip install -U --pre vllm \
-        --extra-index-url https://wheels.vllm.ai/nightly/cu128 && \
+      pip install --no-cache-dir -U vllm \
+        --extra-index-url https://wheels.vllm.ai/nightly ;\
       apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/* && \
-      pip install git+https://github.com/huggingface/transformers.git; \
+      pip install --no-cache-dir git+https://github.com/huggingface/transformers.git; \
     else \
-      pip install -U "vllm[flashinfer]" \
+      pip install --no-cache-dir -U "vllm[flashinfer]" \
         --extra-index-url https://download.pytorch.org/whl/cu128 ; \
     fi
 
