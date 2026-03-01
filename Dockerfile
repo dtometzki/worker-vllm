@@ -38,7 +38,7 @@ ENV PYTHONPATH="/:/vllm-workspace"
 # vLLM je nach Schalter
 RUN python3 -m pip install --no-cache-dir -U pip && \
     if [ "${VLLM_NIGHTLY}" = "true" ]; then \
-      pip install --no-cache-dir -U vllm \
+      pip install --no-cache-dir -U vllm --pre \
         --extra-index-url https://wheels.vllm.ai/nightly ;\
       apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/* && \
       pip install --no-cache-dir git+https://github.com/huggingface/transformers.git; \
