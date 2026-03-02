@@ -39,18 +39,18 @@ ENV MODEL_NAME=$MODEL_NAME \
 ENV PYTHONPATH="/:/vllm-workspace"
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 # vLLM je nach Schalter (ohne pip-Update)
 RUN if [ "${VLLM_NIGHTLY}" = "true" ]; then \
-        python3 -m pip install --no-cache-dir -U vllm --pre \
-          --extra-index-url https://wheels.vllm.ai/nightly/cu130 \
-          --break-system-packages; \
+        uv pip install --system --no-cache-dir -U vllm --pre \
+          --extra-index-url https://wheels.vllm.ai/nightly/cu130 && \
         apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/* && \
         python3 -m pip install --no-cache-dir git+https://github.com/huggingface/transformers.git \
           --break-system-packages; \
     else \
-        python3 -m pip install --no-cache-dir -U "vllm[flashinfer]" \
-          --extra-index-url https://download.pytorch.org/whl/cu130 \
-          --break-system-packages; \
+        uv pip install --system --no-cache-dir -U "vllm[flashinfer]" \
+          --extra-index-url https://download.pytorch.org/whl/cu130; \
     fi
 
 
