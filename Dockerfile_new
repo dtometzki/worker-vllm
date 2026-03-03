@@ -1,0 +1,64 @@
+# --- STAGE 1: Builder ---
+FROM nvidia/cuda:12.9.1-devel-ubuntu22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    python3-venv \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Venv erstellen
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Abhängigkeiten installieren
+ARG VLLM_NIGHTLY="false"
+COPY builder/requirements.txt /requirements.txt
+
+RUN if [ "${VLLM_NIGHTLY}" = "true" ]; then \
+        uv pip install --no-cache-dir -U vllm --pre --extra-index-url https://wheels.vllm.ai/nightly/cu130 && \
+        uv pip install --no-cache-dir git+https://github.com/huggingface/transformers.git; \
+    else \
+        uv pip install --no-cache-dir -U "vllm[flashinfer]" --extra-index-url https://download.pytorch.org/whl/cu130; \
+    fi && \
+    uv pip install --no-cache-dir -r /requirements.txt
+
+
+# --- STAGE 2: Runtime ---
+FROM nvidia/cuda:12.9.1-base-ubuntu22.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Venv aus Builder kopieren
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# User-Setup
+RUN useradd -m -u 1000 vllmuser
+WORKDIR /app
+RUN chown -R vllmuser:vllmuser /app
+
+# Envs
+ENV PYTHONPATH="/app" \
+    RAYON_NUM_THREADS=4 \
+    TOKENIZERS_PARALLELISM=false \
+    LD_LIBRARY_PATH="/usr/local/cuda/compat:$LD_LIBRARY_PATH"
+
+COPY src/ /app/src/
+RUN chown -R vllmuser:vllmuser /app/src
+
+USER vllmuser
+
+# Modell-Download (optional als build-time step)
+ARG MODEL_NAME=""
+RUN if [ -n "$MODEL_NAME" ]; then \
+        python3 /app/src/download_model.py; \
+    fi
+
+CMD ["python3", "/app/src/handler.py"]
