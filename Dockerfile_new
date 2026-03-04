@@ -1,13 +1,14 @@
-# --- STAGE 1: Builder ---
-FROM nvidia/cuda:12.9.1-devel-ubuntu22.04 AS builder
+FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
     python3-pip \
     python3-venv \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Venv im System-Pfad erstellen
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
@@ -16,39 +17,30 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ARG VLLM_NIGHTLY="false"
 COPY builder/requirements.txt /requirements.txt
 
+# Installation
 RUN if [ "${VLLM_NIGHTLY}" = "true" ]; then \
-        uv pip install --no-cache-dir -U vllm --pre --extra-index-url https://wheels.vllm.ai/nightly/cu130 && \
+        uv pip install --no-cache-dir -U vllm --pre --extra-index-url https://wheels.vllm.ai/nightly/ && \
         uv pip install --no-cache-dir git+https://github.com/huggingface/transformers.git; \
     else \
-        uv pip install --no-cache-dir -U "vllm[flashinfer]" --extra-index-url https://download.pytorch.org/whl/cu130; \
+        uv pip install --no-cache-dir -U "vllm[flashinfer]" --extra-index-url https://download.pytorch.org/whl/cu124; \
     fi && \
     uv pip install --no-cache-dir -r /requirements.txt
 
-# --- STAGE 2: Runtime ---
-# Nutze 'runtime' statt 'base', das enthält die nötigen CUDA-Bibliotheken
-FROM nvidia/cuda:12.9.1-runtime-ubuntu22.04 AS runtime
+# CUDA Kompatibilität sicherstellen
+RUN ldconfig /usr/local/cuda-12.9/compat/
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# WICHTIG: Setze den Pfad zu den CUDA-Bibliotheken explizit
-ENV PYTHONPATH="/app" \
-    RAYON_NUM_THREADS=4 \
-    TOKENIZERS_PARALLELISM=false \
-    LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/local/cuda/compat:$LD_LIBRARY_PATH"
-
+# User Setup
 RUN useradd -m -u 1000 vllmuser
 WORKDIR /app
-
 COPY src/ /app/src/
 RUN chown -R vllmuser:vllmuser /app
 
 USER vllmuser
+
+ENV PYTHONPATH="/app" \
+    RAYON_NUM_THREADS=4 \
+    TOKENIZERS_PARALLELISM=false \
+    LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/local/cuda/compat:$LD_LIBRARY_PATH"
 
 ARG MODEL_NAME=""
 RUN if [ -n "$MODEL_NAME" ]; then \
