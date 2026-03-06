@@ -46,8 +46,7 @@ RUN if [ "${VLLM_NIGHTLY}" = "true" ]; then \
         uv pip install --system --no-cache-dir -U vllm --pre \
           --extra-index-url https://wheels.vllm.ai/nightly/cu130 && \
         apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/* && \
-        python3 -m pip install --no-cache-dir git+https://github.com/huggingface/transformers.git \
-          --break-system-packages; \
+        python3 -m pip install --no-cache-dir git+https://github.com/huggingface/transformers.git; \
     else \
         uv pip install --system --no-cache-dir -U "vllm[flashinfer]" \
           --extra-index-url https://download.pytorch.org/whl/cu130; \
